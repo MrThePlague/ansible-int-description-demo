@@ -1,0 +1,41 @@
+---
+- name: Set interface descriptions based on CDP neighbour details
+  hosts: all
+
+  tasks:
+  ###
+  # Collect data from devices
+  # 
+  - name: Gather facts for IOS devices
+    ios_facts:
+      gather_subset:
+      - interfaces
+    when: ansible_network_os == 'ios'
+  
+  - name: Gather facts for NX-OS devices
+    nxos_facts:
+      gather_subset:
+      - interfaces
+    when: ansible_network_os == 'nxos'
+
+  ###
+  # Configure interface descriptions in the format "<< Neighbour Hostname >> - << Remote Interface >>"
+  #
+
+  - name: Configure interface descriptions
+    ios_interfaces:
+      config:
+        - name: "{{ item.key }}"
+          description: "{{ item.value.0.host }} - {{ item.value.0.port }}"
+      state: merged
+    with_dict: "{{ ansible_net_neighbors }}"
+    when: ansible_network_os == 'ios'
+
+  - name: Configure interface descriptions
+    nxos_interfaces:
+      config:
+        - name: "{{ item.key }}"
+          description: "{{ item.value.0.host }} - {{ item.value.0.port }}"
+      state: merged
+    with_dict: "{{ ansible_net_neighbors }}"
+    when: ansible_network_os == 'nxos' and item.key != "mgmt0" # Example of how to exclude an interface
